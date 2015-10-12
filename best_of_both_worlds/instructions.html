@@ -1,0 +1,131 @@
+	<h3>Task Instructions</h3>
+	In this task you will be asked questions about images. 
+	<ul>
+	  <li>Please answer each question to the best of your ability.
+	  <li>Your answers are always saved. You can always go back and revise your answer.
+	<!--  <li>Please be advised that occasionally there might be a small number of adult or disturbing images/object names despite our effort to filter them out.-->
+<li>Keyboard shortcuts
+<ul>
+    <li> You can use keyboard left and right keys for 'previous' and 'next'
+<li> On binary questions, you can type '1' for 'yes' and '2' for 'no'.
+<!--<li>When only one button is displayed, you can click it by typing either '1' or '2'-->
+<!--<ul>
+<li>This feature is disabled in the Box Draw task
+</ul>-->
+</ul>
+
+</ul>
+
+<h4>Annotation guidelines</h4>
+
+<ul style="list-style: none;">
+	    <li><b>Most important:</b> When asked about a specific object, please be precise.
+For example, if asked about 'trumpets' please do not annotate 'trombones'.
+
+<li>A box is a <b>good bounding box</b> around an object if it:
+<ol>
+<li>covers most visible parts of the object, and
+<li> is reasonably tight around the object
+</ol>
+<li>A box doesn't have to be perfect to be considered good. These are good bounding boxes for the <font color='blue'>dog</font> object:
+<ul>
+<table>
+<tr>
+<td><img src='examples/good_ILSVRC2012_val_00000379.JPEG' height='100'></td>
+<td><img src='examples/OK_70_ILSVRC2012_val_00000057.JPEG' height=100></td>
+<!--<td><img src='examples/good_ILSVRC2012_val_00002773.JPEG' height='100'></td>-->
+<td><img src='examples/OK_71_ILSVRC2012_val_00000748.JPEG' height=100></td>
+<!--<td><img src='examples/good_ILSVRC2012_val_00000350.JPEG' height='100'></td>-->
+</tr><tr>
+<td><img src='examples/OK_74_ILSVRC2012_val_00000668.JPEG' height=100></td>
+<td><img src='examples/OK_74_ILSVRC2012_val_00000696.JPEG' height=100></td>
+<td><img src='examples/good_ILSVRC2012_val_00002988.JPEG' height='100'></td>
+</tr><tr>
+<!--<td><img src='examples/OK_70_ILSVRC2012_val_00000203.JPEG' height=100></td>-->
+<td><img src='examples/OK_72_ILSVRC2012_val_00000643.JPEG' height=100></td>
+<td><img src='examples/OK_72_ILSVRC2012_val_00000719.JPEG' height=100></td>
+<td><img src='examples/OK_73_ILSVRC2012_val_00000694.JPEG' height=100></td>
+</tr>
+<!--
+</tr>
+<td><img src='examples/OK_65_ILSVRC2012_val_00000350.JPEG' height=100></td>
+<td><img src='examples/OK_66_ILSVRC2012_val_00000141.JPEG' height=100></td>
+<td><img src='examples/OK_66_ILSVRC2012_val_00000174.JPEG' height=100></td>
+<td><img src='examples/OK_53_ILSVRC2012_val_00000115.JPEG' height=100></td>
+<td><img src='examples/OK_53_ILSVRC2012_val_00000643.JPEG' height=100></td>
+<td><img src='examples/OK_55_ILSVRC2012_val_00000668.JPEG' height=100></td>
+<td><img src='examples/OK_57_ILSVRC2012_val_00000147.JPEG' height=100></td>
+</tr>-->
+<!--<tr>
+<td>
+<img src='examples/OK_ILSVRC2012_val_00000057.JPEG' height='100'>
+</td>
+<td>
+<img src='examples/OK_ILSVRC2012_val_00002656.JPEG' height='100'>
+</td>
+<td>
+<img src='examples/OK_ILSVRC2012_val_00001937.JPEG' height='100'>
+</td>
+<td>
+<img src='examples/OK_ILSVRC2012_val_00000391.JPEG' height='100'>
+</td>
+</tr>-->
+</table>
+</ul>
+<li>A box is a bad <b>bad bounding box</b> if it:
+<ol>
+<li>is around the wrong object
+<li>is around multiple instances of the same object
+<li>is too tight or too loose around the object
+</ol>
+<li>These are bad bounding boxes for the  <font color='blue'>dog</font> object
+<ul>
+<table>
+<tr>
+<td><img src='examples/bad_ILSVRC2012_val_00000018.JPEG' height='100'></td>
+<td><img src='examples/bad_ILSVRC2012_val_00000694.JPEG' height='100'></td>
+<td><img src='examples/bad_ILSVRC2012_val_00000115.JPEG' height='100'></td>
+</tr><tr>
+<td><img src='examples/bad_ILSVRC2012_val_00001929.JPEG' height='100'></td>
+<td><img src='examples/bad_32_ILSVRC2012_val_00001286.JPEG' height=100></td>
+<td><img src='examples/bad_33_ILSVRC2012_val_00001624.JPEG' height=100></td>
+</tr><tr>
+<td><img src='examples/bad_37_ILSVRC2012_val_00001550.JPEG' height=100></td>
+<!--<td><img src='examples/bad_39_ILSVRC2012_val_00001297.JPEG' height=100></td>-->
+<td><img src='examples/bad_39_ILSVRC2012_val_00001957.JPEG' height=100></td>
+<td><img src='examples/bad_40_ILSVRC2012_val_00001686.JPEG' height=100></td>
+</tr>
+<!--<tr>
+<td>
+The box has the wrong object
+</td>
+<td>
+The box is too loose
+</td>
+<td>
+The box doesn't cover all visible parts of the object
+</td>
+<td>
+The box has more than one object instance
+</td>
+</tr>-->
+</table>
+</ul>
+<li>If the question was about a <u>generic object</u> then all the green boxes above <u>and</u> the magenta box above are good.
+</ul>
+
+
+	     <h4>Submitting</h4>
+
+<p>	       When you are finished with all questions, the 'Submit' button will become available.
+When you click, your work will be checked for:</p>
+<ol>
+<li>Completeness: every question needs to be answered fully
+<li>Accuracy: we will compare your answers to the answers we expect (on a random subset of questions)
+</ol>
+<p>If you don't meet the above criteria, you will receive an error message. You may go back and change your answers and try again.
+</p>
+
+<p><i>All submissions will be approved automatically within 7 days. The only exception is if you enter profanity when naming the object and the script doesn't catch it automatically, we will reject your work retroactively.</i></p>
+	  
+

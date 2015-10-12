@@ -1,0 +1,421 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Verify tags in images</title>
+    <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/json3/3.3.2/json3.min.js"></script>
+    <style>
+      #example-div {
+        background-color: lightgray;
+        padding: 30px;
+      }
+      .task-div {
+        padding: 30px;
+        margin-bottom: 20px;
+        background-color: #ccf;
+      }
+      .instructions {
+        font-size: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <script type='text/json' id='input'>
+      {{ input }}
+    </script>
+    <div class="container-fluid">
+      <div class='row'>
+        <div class='col-xs-12'>
+          <h1>Instructions</h1>
+        </div>
+      </div>
+      <div class='row'>
+        <div class='col-xs-12 col-md-10 col-md-offset-2'>
+          <ul class='instructions'>
+            <li>You will be shown an image along with several tags that may describe that image.</li>
+            <li>
+              You must classify each tag as one of the following:
+              <ul>
+                <li><b>Relevant</b> - The tag describes the image and is an important concept in the image</li>
+                <li><b>Irrelevant</b> - The tag correctly describes the image, but is not an important part of the image</li>
+                <li><b>Incorrect</b> - The tag does not describe the image</li>
+                <li><b>Unsure</b> - You are not sure if the tag correctly describes the image</li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class='row'>
+        <div class='col-xs-6 col-xs-offset-3 col-md-4 col-md-offset-4 instructions'>
+          <h2>Keyboard shortcuts</h2>
+          <ul>
+            <li>1 - Mark next tag as <b>relevant</b></li>
+            <li>2 - Mark next tag as <b>irrelevant</b></li>
+            <li>3 - Mark next tag as <b>incorrect</b></li>
+            <li>4 - Mark next tag as <b>unsure</b></li>
+          </ul>
+        </div>
+      </div>
+      <div class='row'>
+        <div class='col-xs-12 text-center'>
+          <h4>(You must click the page to activate keyboard shortcuts)</h4>
+        </div>
+      </div>
+      <div id='example-div'>
+        <h1>Example</h1>
+        <div id='inner-example-div'></div>
+        <div class='row'>
+          <div class='col-xs-6 col-xs-offset-3 instructions'>
+            <h3>Explanation</h3>
+            <ul>
+              <li>
+                The tags "outdoor" and "street" are correct and important to the
+                image, so they are marked as <b>Relevant</b>.
+              </li>
+              <li>
+                The image contains a traffic light in the background, so the
+                tag "traffic light" is correct. However the traffic light is not
+                an important part of the image, so the tag is <b>Irrelevant</b>.
+              </li> 
+              <li>
+                The image is not indoors, so the tag "indoor" is <b>Incorrect</b>.
+              </li>
+              <li>
+                It is impossible to tell whether the image was taken in Kentucky.
+                Therefore the tag "Kentucky" is <b>Unsure</b>.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h1>Tasks</h1>
+        <div id='task-div'></div>
+      </div>
+      <div class='text-center'>
+        <form id='results-form' method='post' action='default'>
+          <input type='hidden' value='' name='assignmentId' id='assignmentId'/>
+          <input type='hidden' value='' name='output' id='output'/>
+          <input type='submit' class='btn btn-lg btn-success' id='submit-btn' value='Submit' disabled/>
+        </form>
+      </div>
+    </div>
+
+    <script type='text/template' id="tag-votes-template">
+      <div class='row'>
+        <div class='col-xs-7 image-div'>
+          <img class='img-responsive center-block' src='<%= image_url %>'>
+        </div>
+        <div class='col-xs-5 tag-list'>
+          <h3>Tags</h3>
+          <ul class='list-group'>
+          </ul>
+        </div>
+      </div>
+    </script>
+  
+    <script type='text/template' id='tag-vote-template'>
+      <div class='row'>
+        <div class='col-xs-3'>
+          <%= tag %>
+        </div>
+        <div class='col-xs-9'>
+          <div class='pull-right'>
+            <button class='btn btn-sm btn-default relevant-btn'>Relevant</button>
+            <button class='btn btn-sm btn-default irrelevant-btn'>Irrelevant</button>
+            <button class='btn btn-sm btn-default bad-btn'>Incorrect</button>
+            <button class='btn btn-sm btn-default unsure-btn'>Unsure</button>
+          </div>
+        </div>
+    </script>
+
+    <script>
+      $(function() {
+        var TagVote = Backbone.Model.extend({
+          defaults: {
+            tag: null,
+            vote: null,
+          }
+        });
+
+        var TagVotes = Backbone.Collection.extend({
+          model: TagVote,
+        });
+
+        var TagVotesView = Backbone.View.extend({
+          initialize: function(options) {
+            _.extend(this, _.pick(options, 'image_url', 'read_only'));
+            this.child_views = [];
+            this.render();
+          },
+          render: function() {
+            var template_vars = _.pick(this, 'image_url');
+            var template = _.template($('#tag-votes-template').html());
+            var html = template(template_vars);
+            this.$el.html(html);
+            var $ul = this.$el.find('ul.list-group');
+            this.collection.each(function(t) {
+              var tag_vote_view = new TagVoteView({
+                                    model: t,
+                                    read_only: this.read_only
+                                  });
+              this.child_views.push(tag_vote_view);
+              tag_vote_view.$el.appendTo($ul);
+            }, this);
+            
+            var image_div = this.$el.find('.image-div');
+            var img = this.$el.find('img');
+            img.load(function() {
+              var ul_height = $ul.height();
+              var image_height = image_div.height();
+              if (ul_height > image_height) {
+                var num_to_add = (ul_height - image_height) / image_height;
+                num_to_add = Math.ceil(num_to_add);
+                _.each(_.range(num_to_add), function() {
+                  $('<img>').attr('src', template_vars.image_url)
+                            .addClass('img-responsive center-block')
+                            .appendTo(image_div);
+                });
+              }
+            });
+
+            return this;
+          }
+        });
+        
+        var TagVoteView = Backbone.View.extend({
+          tagName: 'li',
+          className: 'list-group-item',
+          initialize: function(options) {
+            if (options) _.extend(this, _.pick(options, 'read_only'));
+            this.render();
+          },
+          render: function() {
+            var template_vars = { tag: this.model.get('tag') };
+            var html = _.template($('#tag-vote-template').html(), template_vars);
+            this.$el.html(html);
+            this.$relevant_btn = this.$el.find('.relevant-btn');
+            this.$irrelevant_btn = this.$el.find('.irrelevant-btn');
+            this.$unsure_btn = this.$el.find('.unsure-btn');
+            this.$bad_btn = this.$el.find('.bad-btn');
+            this.$buttons = [this.$relevant_btn, this.$irrelevant_btn,
+                             this.$unsure_btn, this.$bad_btn];
+            var _this = this;
+            if (!this.read_only) {
+              this.$relevant_btn.click(function() { _this.model.set({vote: 'Y'}); });
+              this.$irrelevant_btn.click(function() { _this.model.set({vote: 'I'}); });
+              this.$unsure_btn.click(function() {_this.model.set({vote: 'U'}); });
+              this.$bad_btn.click(function() { _this.model.set({vote: 'N'}); });
+            }
+            this.model.on('change', this.update, this);
+            this.update();
+          },
+          update: function() {
+            _.each(this.$buttons, function(btn) {
+              btn.removeClass('btn-success btn-warning btn-danger btn-info');
+              btn.addClass('btn-default');
+            });
+            var options = {
+              'Y': { cls: 'btn-success', btn: this.$relevant_btn },
+              'N': { cls: 'btn-danger', btn: this.$bad_btn },
+              'U': { cls: 'btn-warning', btn: this.$unsure_btn },
+              'I': { cls: 'btn-info', btn: this.$irrelevant_btn },
+            };
+            if (this.model.has('vote') && _.has(options, this.model.get('vote'))) {
+              var v = this.model.get('vote');
+              options[v].btn.removeClass('btn-default');
+              options[v].btn.addClass(options[v].cls);
+            }
+          }, 
+        });
+
+        function getParams() {
+          return _.chain(location.search.slice(1).split('&'))
+                  .map(function(x) {
+                      if (x) return _.map(x.split('='), decodeURIComponent);
+                  }).compact()
+                  .object()
+                  .value();
+        }
+
+        $(function() {
+            var url_params = getParams();
+            var preview = (url_params.assignmentId === 'ASSIGNMENT_ID_NOT_AVAILABLE');
+
+            /*
+            var example_input = {
+              image_url: ('http://media-cache-ec0.pinimg.com/originals/b9/fc/ee/'
+                          + 'b9fcee1a715bada67218c05382bccf10.jpg'),
+              tags: [ 
+                      {tag: 'cute', vote: true},
+                      {tag: 'cat', vote: true},
+                      {tag: 'dog', vote: false},
+                    ],
+            };
+            */
+            var example_input = {
+              image_url: "https://farm9.staticflickr.com/2852/10259938483_f0147be636.jpg",
+              photo_id: "10259938483",
+              tags: [
+                {tag: "outdoor", val: 0.1, vote: "Y"},
+                {tag: "street", val: 0.1, vote: "Y"},
+                {tag: "traffic light", val: 0.1, vote: "I"},
+                {tag: "indoor", val: 0.1, vote: "N"},
+                {tag: "Kentucky", val: 0.1, vote: "U"},
+              ]
+            };
+            /*
+            var example_input = {
+              "image_url": "https://farm9.staticflickr.com/22/34152782_19acea6ac6.jpg",
+              "photo_id": "34152782",
+              "tags": [
+                {"tag": "outdoor", "val": 0.999, "vote": 'Y'},
+                {"tag": "horse", "val": 0.547, "vote": 'N'},
+                {"tag": "sports", "val": 0.856, "vote": 'N'},
+                {"tag": "giraffe", "val": 0.928, "vote": 'Y'},
+                {"tag": "Africa", "val": 0.0, "vote": 'U'},
+                {"tag": "tree", "val": 0.525, "vote": 'Y'},
+                {"tag": "grass", "val": 0.63, "vote": 'Y'}
+              ]
+            };
+            */
+
+            var example_tag_votes = new TagVotes(example_input.tags);
+            var example_view = new TagVotesView({
+                                  image_url: example_input.image_url,
+                                  collection: example_tag_votes,
+                                  el: $('#inner-example-div'),
+                                  read_only: true,
+                               });
+            // if ($('#input').val().length > 0) {
+            //  var input = JSON.parse($('#input').val()); 
+            //} else {
+            try {
+              // Try to parse the input. This will fail if the template has not
+              // been instantiated.
+              var input = JSON.parse($('#input').html());
+            } catch (e) {
+              console.log('Could not parse input; using default value');
+              // Use a default value
+              var input = [{"photo_id": "10252501583", "image_url": "https://farm9.staticflickr.com/5534/10252501583_b64e9d97ff.jpg", "tags": [{"tag": "shoes", "val": 0.464}, {"tag": "building", "val": 0.804}, {"tag": "bottle", "val": 0.422}]}, {"image_url": "https://farm9.staticflickr.com/2852/10259938483_f0147be636.jpg", "photo_id": "10259938483", "tags": [{"tag": "outdoor", "val": 0.954}, {"tag": "house", "val": 0.72}, {"tag": "street", "val": 0.817}, {"tag": "fire truck", "val": 0.969}, {"tag": "boat", "val": 0.708}, {"tag": "canal", "val": 0.503}, {"tag": "automobile", "val": 0.976}, {"tag": "sports", "val": 0.638}, {"tag": "vehicle", "val": 0.976}, {"tag": "highway", "val": 0.955}, {"tag": "road", "val": 0.99}, {"tag": "transportation", "val": 0.885}, {"tag": "bus", "val": 0.957}, {"tag": "train", "val": 0.875}, {"tag": "streetcar", "val": 0.885}, {"tag": "intersection", "val": 0.915}, {"tag": "auto racing", "val": 0.715}, {"tag": "building", "val": 0.918}, {"tag": "tram", "val": 0.885}, {"tag": "racetrack", "val": 0.715}, {"tag": "freeway", "val": 0.972}, {"tag": "truck", "val": 0.933}, {"tag": "car", "val": 0.976}, {"tag": "tractor", "val": 0.583}]}];
+              /*
+              var input = [
+                {
+                  image_url: 'cat.jpg',
+                  photo_id: 'fake1',
+                  tags: [
+                    { tag: 'cute' },
+                    { tag: 'cat' },
+                    { tag: 'dog' },
+                  ],
+                },
+                {
+                  image_url: 'cat.jpg',
+                  photo_id: 'fake2',
+                  tags: [
+                    { tag: 'adorable' },
+                    { tag: 'kitty' },
+                  ],
+                },
+              ];
+              */
+            }
+
+            if (!_.isArray(input)) {
+              input = [input];
+            }
+
+            var tag_votes_array = [];
+            _.each(input, function(photo_data) {
+              var tag_votes = new TagVotes(photo_data.tags);
+              tag_votes_array.push(tag_votes);
+              var div = $('<div>').addClass('task-div').appendTo($('#task-div'));
+              var task_view = new TagVotesView({
+                                image_url: photo_data.image_url,
+                                collection: tag_votes,
+                                el: div,
+                                read_only: preview
+                              });
+            });
+
+            // Set focus to document so key handlers work without clicking first
+
+            if (!preview) {
+              // Attach key handlers for Y and N keys
+              $(document).keydown(function(e) {
+                var tag_votes = null;
+                for (var i = 0; i < tag_votes_array.length; i++) {
+                  if (!tag_votes_array[i].every(function(x) { return x.has('vote'); })) {
+                    tag_votes = tag_votes_array[i];
+                    break;
+                  } 
+                }
+                if (tag_votes === null) return;
+
+                var tag_vote = tag_votes.findWhere({vote: null});
+                var keycode_to_vote = { 49: 'Y', 50: 'I', 51: 'N', 52: 'U' };
+                if (!tag_vote) return;
+
+                if (_.has(keycode_to_vote, e.keyCode)) {
+                  tag_vote.set('vote', keycode_to_vote[e.keyCode]);
+                  console.log(tag_vote);
+                } else {
+                  console.log(e.keyCode);
+                }
+
+                /*
+                if (e.keyCode === 89) {
+                  tag_vote.set('vote', 'Y');
+                } else if (e.keyCode === 78) {
+                  // var tag_vote = tag_votes.findWhere({vote: null});
+                  tag_vote.set('vote', 'N');
+                } else if (e.keyCode === 85) {
+                  console.log('here');
+                  tag_vote.set('vote', 'U');
+                } else {
+                  console.log(e.keyCode)
+                }
+                */
+              });
+              window.setTimeout(function() {
+                $('#task-div').focus();
+                console.log('focusing');
+              }, 1000);
+
+              // Attach handler to enable the submit button
+              _.each(tag_votes_array, function(tag_votes) {
+                tag_votes.on('change', function() {
+                  // Whenever any tag_vote changes, check all tag_votes
+                  var done = true;
+                  _.each(tag_votes_array, function(tag_votes_alt) {
+                    done = done && tag_votes_alt.every(function(x) { return x.has('vote'); });
+                  });
+                  $('#submit-btn').prop('disabled', !done);
+                });
+              });
+              
+              $('#results-form').attr('action', url_params.turkSubmitTo + '/mturk/externalSubmit');
+              // Fill in the results when the form is submitted
+              $('#results-form').submit(function() {
+                $('#assignmentId').val(url_params.assignmentId);
+                var output = [];
+                _.each(_.zip(input, tag_votes_array), function(x) {
+                  output.push({
+                    image_url: x[0].image_url,
+                    photo_id: x[0].photo_id,
+                    tags: x[1].toJSON(),
+                  });
+                });
+                console.log(output);
+                $('#output').val(JSON.stringify(output));
+              });
+            }
+        });
+      })
+    </script>
+  </body>
+</html>
