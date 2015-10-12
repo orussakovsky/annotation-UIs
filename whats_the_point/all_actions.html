@@ -1,0 +1,361 @@
+<html>
+  <head>
+    <title>Annotate images</title>
+    <script src='//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js'></script>
+    <script src='//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js'></script>
+    <script src='//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js'></script>
+    <script src='//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js'></script>
+    <script src='//cdnjs.cloudflare.com/ajax/libs/json3/3.3.2/json3.min.js'></script>    
+    <script src='//cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.10.2/typeahead.bundle.min.js'></script>
+
+    <!-- IMPORTANT: before submitting to AMT, make sure the paths are absolute rather than relative, e.g.,
+	 //image-net.org/path/to/templates/ --> 
+
+    <script src='utils.js'></script>
+    <script src='carosel.js'></script>
+    <script src='point-drawer.js'></script>
+    <!-- If want to get just one click per object class -->
+    <!-- <script src='point-drawer-once.js'></script> -->
+    <script src='point_task.js'></script>
+    <script src='timer.js'></script>
+    <script src='sample_input.js'></script>
+
+    <!-- -->
+
+    <link href='//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css' rel='stylesheet'>
+    <style>
+      .tt-dropdown-menu {
+      width: 200px;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      }
+ 
+      .query-img {
+        width: 225px;
+        height: 225px;
+        margin-bottom: 5px;
+      }
+      .other-img {
+        margin-right: 1px;
+        margin-bottom: 1px;
+        width: 175px;
+        height: 175px;
+        border: 6px solid transparent;
+        cursor: pointer;
+      }
+      #c-imgs-div {
+        background-color: #DCDCDC;
+        padding:5px;
+      }
+      .padded {
+        padding: 10px;
+      margin: 5px;
+      }
+      #c-buttons-div {
+        padding: 5px 0px 0px;
+      }
+      .img-selected {
+        border-style: solid;
+        border-color: #0F0;
+      }
+      .task-instr {
+      }
+      .task-instr-text {
+        font-size: 14px;
+        color: black;
+      text-align:left;
+      }
+      .task-instr-title {
+      font-size: 22px;
+      color: black;
+      padding: 5px;
+      margin: 5px;
+      <!--text-decoration:underline;-->
+      }
+      .task-instr-clsname {
+        font-size: 32px;
+        color: blue;
+      font-weight:bold;
+      margin-bottom:5px;
+      }
+      table {
+     font-size:12px;
+      }
+      td {
+      padding: 5px;
+      border:2px solid black;
+      }
+      .chosen-counter {
+        text-align: center;
+        font-size: 24px;
+        margin-top: 10px;
+        margin-bottom: 10px;
+      }
+      .div-warning {
+      background-color:white;
+      font-size:16px;
+      color: red;
+      }
+      .global-instr-all {
+      background-color:#A8A8A8;
+      }
+      .global-instr {
+      padding-top:1px;
+      padding-bottom:10px;
+      padding-right:10px;
+      padding-left:10px;
+      }
+      .sp {
+      height:10px;
+      }
+      #last-task {
+      font-size:10px;
+      color:green;
+      }
+    </style>
+  </head>
+  <body>
+    <div class='container'>
+    <div class='container-fluid'>
+      <div id='preview-div' class='div-warning hidden text-center padded'>
+	Warning: this is preview mode. You will not be able to submit. 
+      </div>
+     <div class='global-instr-all text-center'>
+	<b>Please click once on each</b>
+	<!-- If want to get just one click per object class -->
+	<!-- <b>Please click once on a </b> -->
+	<div class='global-instr-all text-center task-instr-clsname' id='clsname'>
+	  TODO
+	</div>
+      </div>
+      <div class='sp'></div>
+      <div id='last-task' class='hidden text-center'>
+	This is the last question. Use the submit button below when you are done.
+	</div>
+      <div id='start-div' class='text-center'>
+	<button id='start-btn' class='btn btn-lg btn-success'></button>
+      </div>
+      <div id='c-imgs-div' class='text-center hidden'></div>
+      <div id='c-buttons-div' class='text-center hidden'></div>
+      <script type='text/json' id='input'>
+        {{ input }}
+      </script>
+      <form id='results-form' method='post' action='dummy' class='text-center'>
+        <input type='hidden' value='' name='assignmentId' id='assignmentId'/>
+        <input type='hidden' value='' name='output' id='output'/>
+        <!--<input type='submit' class='btn btn-lg btn-success' id='submit-btn' value='Submit' disabled/>-->     
+      </form>
+      <div id='submit-div' class='text-center'>
+	<button id='submit-btn' class='btn btn-lg btn-success hidden' disabled='true'>Submit</button>
+      </div>
+      <div id='error-div' class='text-center div-warning'>
+      </div>
+      <div class='sp'></div>
+      <div class='global-instr global-instr-all' id='global-instr'>
+      </div>
+    </div>
+    </div>
+    <script type="text/javascript">
+      $(function() {
+	  var url_params = getUrlParams();
+	  var SAMPLE_INPUT = VG.SampleInput().get(url_params.index);
+      
+	  function getUrlParams() {
+	      return _.chain(location.search.slice(1).split('&'))
+		  .map(function(x) {
+		      if (x) return _.map(x.split('='), decodeURIComponent);
+		  }).compact()
+		  .object()
+		  .value();
+	  }
+	  
+	  var preview = !(url_params.assignmentId) || (url_params.assignmentId === 'ASSIGNMENT_ID_NOT_AVAILABLE');
+	  var debug_mode = !(url_params.turkSubmitTo);
+	  	  
+	  function main() {
+	      try {
+		  var input_data = JSON.parse($('#input').html());
+	      } catch (e) {
+		  console.log(e);
+		  console.log('Could not parse input; falling back to default data');
+		  var input_data = SAMPLE_INPUT;
+	      }
+	      
+	      var task_started = false;
+	      
+	      var tasks = [];
+	      function show(idx,div,cb) {
+		  for (var i=0; i < tasks.length; i++) {
+		      tasks[i].disable()
+		  }
+		  $('#last-task').addClass('hidden');
+		  $('#error-div').addClass('hidden');
+		  
+		  if (idx == input_data.questions.length-1) {
+		      $('#last-task').removeClass('hidden');
+		      if (!preview) {
+			  $('#submit-btn').attr('disabled',false);
+		      } 	    
+		  }
+		  
+		  task_input = input_data.questions[idx];
+	          task_input.obj_name = input_data.object_name;
+                  task_input.obj_plural = input_data.object_plural;
+
+		  if (tasks.length <= idx) {
+	              var task = new VG.PointTask(div,task_input);
+		      //If want to get just one click per object class
+		      //var task = new VG.PointTaskOnce(div,task_input);
+                      tasks.push(task);
+		  }
+		  tasks[idx].enable();
+		  
+	      }
+	      
+	      if (input_data.questions.img_id)
+		  input_data.questions = [input_data.questions];
+				      
+	      var t = 'Click here to start task (' + input_data.questions.length + ' questions)';
+	      $('#start-btn').text(t);
+	      
+	      $('#start-btn').click(function() {
+		  $('#start-btn').addClass('hidden')
+		      .attr('disabled',true);
+		  $('#submit-btn').removeClass('hidden');
+		  
+		  var images_div = $('#c-imgs-div');
+		  var buttons_div = $('#c-buttons-div');
+		  
+		  images_div.removeClass('hidden');
+		  buttons_div.removeClass('hidden');
+		  
+		  var num_images = input_data.questions.length;
+		  var carosel_scroll = false;
+		  var carosel = new VG.Carosel(images_div, buttons_div, num_images, show,
+					       carosel_scroll);
+		  carosel.enable();
+		  carosel.enableKeyboardShortcuts();
+		  
+		  task_started = true;
+	      });
+	      
+	      function SaveAnswers() {
+		  var answers = [];
+		  var check_log = [];
+		  var bOk = true;
+		  var gt_correct = 0;
+		  var gt_wrong = 0;
+		  for (var i=0; i < input_data.questions.length; i++) {
+		      var a = tasks[i].GetAnswerIfValid();
+		      answers.push(a);
+		      check_log[i] = a.eval;
+		      if (a.time < 500) {
+			  check_log[i] = 'too fast';
+			  bOk = false;
+		      } else if (a.eval == 'good') {
+			  gt_correct += 1;
+		      } else if (a.eval == 'neutral') {
+		      } else if (a.eval == 'bad') {
+			  gt_wrong += 1;
+		      } else if (a.eval == 'incomplete') {
+			  bOk = false;
+		      } else {
+			  console.log({'ERROR -- strange eval output':a.eval});
+		      }
+		  }
+		  if (gt_correct + gt_wrong > 0) {
+		      var accuracy = gt_correct / (gt_correct + gt_wrong);
+		      if (accuracy < input_data.accuracy) {
+			  if (debug_mode) {
+			      console.log({'Low accuracy':accuracy});
+			  }
+			  bOk = false;
+		      }
+		  }
+		  
+		  var result = {'output': answers,'input':input_data};
+		  if (debug_mode) {
+		      console.log(check_log);
+		      console.log(JSON.stringify(result));
+		  }
+
+		  if (bOk) {
+		      $('#output').val(JSON.stringify(result));
+		      $('#assignmentId').val(url_params.assignmentId);
+		  } 
+		  return bOk;
+	      }
+	      
+	      $('#submit-btn').click(function() {
+		  bOk = SaveAnswers();
+		  if (bOk) {
+		      if (debug_mode) {
+			  $('#error-div').text('Ok submitting').removeClass('hidden');
+		      } else {
+			  $('#results-form').submit();
+		      }
+		      return true;
+		  } else {
+		      $('#error-div').text('Error submitting: please double-check your work and try again').removeClass('hidden');
+		      return false;
+		  }
+	      });
+	      
+              var obj = input_data.object_name;
+              var objs = input_data.object_plural;
+	      $('#clsname').text(obj);
+
+	      document.getElementById('global-instr').innerHTML = "<b>Instructions:</b><br>" + 
+				     "You will be shown some images. Your goal is to click once on each " + obj + "." +
+				     "" + 
+				     "<ul>" + 
+				     "<li> <u>Don't click more than once</u> on the same " + obj + 
+				     "<li> <u>Click on every " + obj + "</u> visible in the image" +  
+				     "<li> One exception: feel free to ignore " + objs + " that are too small" + 
+"<li>If there are no " + objs + " in the image, you <u>must</u> click the button to confirm" +
+				     "<li>Please <u>don't click on any other objects</u>." +
+				     "</ul>" +
+				     "You will not be able to submit unless you work meets our quality requirements. " + 
+				     "However, once you submit a task, your work is guaranteed to be <u>automatically approved within 24 hours</u>." +
+				     "<p><p> Thank you for your help with our research!";
+
+	      /* If want to get just one click per object class
+	      document.getElementById('global-instr').innerHTML = "<b>Instructions:</b><br>" + 
+				     "You will be shown some images. Please click once on a " + obj + "." +
+				     "" + 
+				     "<ul>" + 
+				     "<li>If there is no " + obj + " in the image, you <u>must</u> click the button below the image to confirm." +
+				     "<li>Please <u>don't click on any other objects</u>." +
+				     "<li> If there are multiple instances of " + obj + ", just <u>click on the first one you see</u>." + 
+				     "</ul>" +
+				     "You will not be able to submit unless you work meets our quality requirements. " + 
+				     "However, once you submit a task, your work is guaranteed to be <u>automatically approved within 24 hours</u>." +
+				     "<p><p> Thank you for your help with our research!";*/
+
+
+      
+	      if (preview) {
+		  $('#submit-btn').text('Submit disabled: preview mode')
+		      .removeClass('btn-success').addClass('btn-danger');
+		  $('#preview-div').removeClass('hidden');
+	      } else if (!debug_mode) {
+		  $('#results-form').attr('action', url_params.turkSubmitTo + '/mturk/externalSubmit');    
+	      }
+	      
+	      $(document.documentElement).keyup(function(e) {
+		  if ($.inArray(e.keyCode, [13]) !== -1) { // pressed enter
+		      if (task_started) {
+			  //$('#submit-btn').click();
+		      } else {
+			  $('#start-btn').click();
+		      }
+		  }
+	      });
+	  }
+	  
+	  main();
+      });
+    </script>
+  </body>
+</html>
